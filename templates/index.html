@@ -189,8 +189,8 @@
 
         async function handleBatchUpload(files) {
             document.getElementById('loading').style.display = 'block';
-            resultsContainer.innerHTML = ''; // Clear previous results
-            queueCount.innerText = `${files.length} SIGNALS`;
+            resultsContainer.innerHTML = ''; 
+            let totalDetections = 0;
             let threatFound = false;
 
             for (let file of files) {
@@ -203,25 +203,31 @@
                         body: formData
                     });
                     const data = await response.json();
-                    createTacticalCard(file.name, data);
-                    if (data.prediction.is_threat) threatFound = true;
+                    
+                    // Decode results can be multiple cards per file
+                    data.batch_results.forEach(res => {
+                        createTacticalCard(res.name, res);
+                        if (res.prediction.is_threat) threatFound = true;
+                        totalDetections++;
+                    });
                 } catch (err) {
-                    console.error("ANALYSIS FAILED FOR", file.name, err);
+                    console.error("ANALYSIS FAILED", err);
                 }
             }
 
+            queueCount.innerText = `${totalDetections} DETECTIONS`;
             document.getElementById('loading').style.display = 'none';
             
             if (threatFound) {
-                globalAlert.innerText = "!!! THREAT ENCOUNTERED IN BATCH !!!";
+                globalAlert.innerText = "!!! THREAT ENCOUNTERED IN SCAN !!!";
                 globalAlert.className = 'alert-active';
             } else {
-                globalAlert.innerText = "BATCH SCAN CLEAR";
+                globalAlert.innerText = "SCAN COMPLETE: ENVIROMENT CLEAR";
                 globalAlert.className = '';
             }
         }
 
-        function createTacticalCard(filename, data) {
+        function createTacticalCard(name, data) {
             const pred = data.prediction;
             const card = document.createElement('div');
             card.className = 'tactical-card';
@@ -229,7 +235,7 @@
             const threatStyle = pred.is_threat ? 'color: var(--danger);' : 'color: var(--main-green);';
             
             card.innerHTML = `
-                <div class="card-header">${filename}</div>
+                <div class="card-header">${name}</div>
                 <div class="card-body">
                     <img class="card-visual" src="data:image/png;base64,${data.visual}">
                     <div class="card-stats">

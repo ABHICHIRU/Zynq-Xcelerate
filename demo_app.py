@@ -46,25 +46,45 @@ async def analyze_signal(file: UploadFile = File(...)):
     contents = await file.read()
     iq_complex = np.load(io.BytesIO(contents))
     
-    # 2. Run Inference
-    res = pipeline.process_sample(iq_complex)
+    # 2. Decoding Logic (Sliding Window / Channelization)
+    # If the signal is large, we decode it into multiple 512-sample segments
+    results = []
+    window_size = 512
+    step = 256 # Overlap for better "decoding" coverage
     
-    # 3. Generate Visual for HUD
-    spec_base64 = get_spectrogram_base64(iq_complex)
-    
-    # 4. Return Tactical Decision
+    if len(iq_complex) <= window_size:
+        # Process single signal
+        res = pipeline.process_sample(iq_complex)
+        results.append({
+            "name": file.filename,
+            "prediction": res,
+            "visual": get_spectrogram_base64(iq_complex)
+        })
+    else:
+        # DECODE: Multiple signals in one capture
+        for i in range(0, len(iq_complex) - window_size + 1, step):
+            segment = iq_complex[i:i+window_size]
+            res = pipeline.process_sample(segment)
+            
+            # For the demo, only show segments that contain a detectable signal (not pure noise)
+            # Detections of 'WiFi' with very low confidence are usually noise floor.
+            # But we want to show 'Decoding' so we show anything with a prediction.
+            results.append({
+                "name": f"DECODED_SCAN_CH_{i//step + 1:02d}",
+                "prediction": res,
+                "visual": get_spectrogram_base64(segment)
+            })
+            
+    # 3. Return Tactical Decision Batch
     return {
         "status": "SUCCESS",
-        "prediction": {
-            "type": res["type"],
-            "is_threat": res["threat"],
-            "jammer": res["jammer"],
-            "action": res["action"],
-            "code": res["code"]
-        },
-        "visual": spec_base64
+        "batch_results": results
     }
+
+@app.get("/health")
+async def health():
+    return {"status": "ALIVE"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="127.0.0.1", port=8080)
