@@ -60,6 +60,7 @@ def train_pro_model():
     best_acc = 0.0
     
     for epoch in range(epochs):
+        # Training Phase
         backbone.train(); threat_h.train(); type_h.train(); jammer_h.train()
         train_loss = 0
         for bx, byt, byy, byj in train_loader:
@@ -70,12 +71,15 @@ def train_pro_model():
             loss.backward(); optimizer.step()
             train_loss += loss.item()
         
+        # Validation Phase
         backbone.eval(); threat_h.eval(); type_h.eval(); jammer_h.eval()
-        correct = 0; total = 0
+        val_loss = 0; correct = 0; total = 0
         with torch.no_grad():
             for bx, byt, byy, byj in val_loader:
                 bx = hardware_preprocessing_sim(bx)
                 feat = backbone(bx)
+                l = bce(threat_h(feat).squeeze(), byt) + ce(type_h(feat), byy) + bce(jammer_h(feat).squeeze(), byj)
+                val_loss += l.item()
                 pred = torch.argmax(type_h(feat), dim=1)
                 correct += (pred == byy).sum().item(); total += byy.size(0)
         
@@ -93,7 +97,12 @@ def train_pro_model():
             torch.save(type_h.state_dict(), "models/final_production/type_head.pth")
             torch.save(jammer_h.state_dict(), "models/final_production/jammer_head.pth")
             
-        history.append({"epoch": epoch+1, "val_acc": val_acc})
+        history.append({
+            "epoch": epoch+1, 
+            "train_loss": train_loss/len(train_loader),
+            "val_loss": val_loss/len(val_loader),
+            "val_acc": val_acc
+        })
 
     pd.DataFrame(history).to_csv("training_history.csv", index=False)
     print(f"SkyShield v5.0 Pro Complete. Best Acc: {best_acc:.4f}")

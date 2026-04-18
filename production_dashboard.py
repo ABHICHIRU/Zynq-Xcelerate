@@ -9,20 +9,38 @@ from src.core.heads import ThreatHead, TypeHead, JammerHead
 from src.core.voting_logic import rtl_voting_logic
 
 def plot_training_metrics():
-    """Visualize Validation Accuracy History."""
+    """Visualize Loss and Accuracy History for technical documentation."""
     if not os.path.exists("training_history.csv"):
+        print("No training history found.")
         return
+    
     df = pd.read_csv("training_history.csv")
-    plt.figure(figsize=(10, 5))
-    plt.plot(df['epoch'], df['val_acc'], label='Validation Accuracy', color='green', linewidth=2)
-    plt.title('SkyShield v5.0 Pro: Training Progress (Hardware-Aware)')
-    plt.xlabel('Epoch'); plt.ylabel('Accuracy'); plt.legend(); plt.grid(True, alpha=0.3)
-    plt.savefig("viz_metrics/training_graphs.png")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    
+    # Plot 1: Training and Validation Loss
+    ax1.plot(df['epoch'], df['train_loss'], label='Training Loss', color='blue', linewidth=2)
+    ax1.plot(df['epoch'], df['val_loss'], label='Validation Loss', color='orange', linestyle='--', linewidth=2)
+    ax1.set_title('SkyShield v5.0 Pro: Multi-Task Loss Curve', fontsize=12)
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Loss Value')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    
+    # Plot 2: Validation Accuracy
+    ax2.plot(df['epoch'], df['val_acc'], label='Validation Accuracy', color='green', linewidth=2)
+    ax2.set_title('SkyShield v5.0 Pro: Accuracy Evolution', fontsize=12)
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel('Accuracy (%)')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig("viz_metrics/training_loss_accuracy.png")
+    print("Documented Metrics Graph saved to viz_metrics/training_loss_accuracy.png")
 
 def simulate_production_dashboard():
     print("\n--- SKYSHIELD v5.0 PRO: PRODUCTION DASHBOARD ---")
     
-    # Initialize with Pro-tier 192-dim features
     backbone = SharedBackbone()
     threat_h = ThreatHead(192); type_h = TypeHead(192); jammer_h = JammerHead(192)
     
@@ -33,7 +51,7 @@ def simulate_production_dashboard():
         jammer_h.load_state_dict(torch.load("models/final_production/jammer_head.pth", weights_only=True))
         print("[INIT] Pro Models Loaded Successfully.")
     except Exception as e:
-        print(f"[ERROR] Failed to load Pro models. Have you finished training? {e}")
+        print(f"[ERROR] Failed to load Pro models: {e}")
         return
 
     backbone.eval(); threat_h.eval(); type_h.eval(); jammer_h.eval()
@@ -48,7 +66,6 @@ def simulate_production_dashboard():
     total_samples = 10 
     
     for i in range(total_samples):
-        # SIMULATE FPGA PREPROCESSING (INT8 Discretization)
         iq_sample = X_stream[i]
         iq_fixed = np.clip(np.round(iq_sample * 127), -128, 127)
         iq_fpga = iq_fixed / 127.0
@@ -62,13 +79,11 @@ def simulate_production_dashboard():
             p_jammer = (torch.sigmoid(jammer_h(feat).squeeze()) > 0.5).item()
             
         action_code, status = rtl_voting_logic(p_threat, p_type, p_jammer)
-        
         expected = ground_truth[i]
         result = "CORRECT" if p_type == expected else "INCORRECT"
         if result == "CORRECT": success_count += 1
         
         print(f"Sample #{i+1:02d} | Predicted: {type_map[p_type]:<10} | Actual: {type_map[expected]:<10} | Result: {result}")
-        print(f"   -> System Action: {status}")
 
     print(f"\nFinal Real-Time Pro Accuracy: {100.*success_count/total_samples:.1f}%")
 
