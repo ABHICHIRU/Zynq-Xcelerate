@@ -7,7 +7,7 @@
 
 ## Overview
 
-SkyShield v4.2 is a lightweight, production-grade RF anomaly detection system optimized for the **Xilinx Zynq-7020 SoC FPGA**. This baseline version utilizes an efficient Depthwise Separable 1D-CNN architecture to perform real-time classification of RF waveforms with minimal power and memory overhead.
+SkyShield Baseline is a lightweight, production-grade RF anomaly detection system optimized for the **Xilinx Zynq-7020 SoC FPGA**. This version utilizes an efficient Depthwise Separable 1D-CNN architecture to perform real-time classification of RF waveforms with minimal power and memory overhead.
 
 ## System Architecture
 
