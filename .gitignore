@@ -1,0 +1,37 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Data
+data/*.npz
+data/*.npy
+
+# Models
+models/*.pth
+models/*.pt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Visualizations
+*.png
+*.jpg
+*.jpeg
+*.pdf
