@@ -41,6 +41,24 @@ class SkyShield2DProduction:
         x_2d = apply_channelizer_2d(raw_iq_complex)
         return torch.tensor(x_2d).unsqueeze(0).to(self.device)
 
+    def process_sample(self, raw_iq_complex):
+        """Processes a single 1D complex signal and returns tactical results."""
+        input_tensor = self.preprocess_1d_to_2d(raw_iq_complex)
+        with torch.no_grad():
+            feat = self.backbone(input_tensor)
+            t_p = torch.sigmoid(self.threat_h(feat)).item() > 0.5
+            ty_p = torch.argmax(self.type_h(feat), dim=1).item()
+            j_p = torch.sigmoid(self.jammer_h(feat)).item() > 0.5
+            
+        action_code, status = rtl_voting_logic(t_p, ty_p, j_p)
+        return {
+            "threat": t_p,
+            "type": ["WiFi", "DJI Drone", "Jammer"][ty_p],
+            "jammer": j_p,
+            "action": status,
+            "code": action_code
+        }
+
     def process_stream(self, iq_stream):
         print(f"\n{'='*80}")
         print(f"{'TIMESTAMP':<15} | {'CLASSIFICATION':<15} | {'HARDWARE ACTION':<35}")
