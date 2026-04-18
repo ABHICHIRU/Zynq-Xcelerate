@@ -1,23 +1,22 @@
 import torch
 import numpy as np
-from src.core.backbone import SharedBackbone
-from src.core.heads import ThreatHead, TypeHead, JammerHead
+from train_final import OptimizedBackbone, OptimizedHead
 from src.core.voting_logic import rtl_voting_logic
 
 def load_models():
-    """Loads the trained models from the models/ directory."""
-    backbone = SharedBackbone()
-    threat_head = ThreatHead()
-    type_head = TypeHead()
-    jammer_head = JammerHead()
+    """Loads the trained models from the final_production/ directory."""
+    backbone = OptimizedBackbone()
+    threat_head = OptimizedHead(1)
+    type_head = OptimizedHead(3)
+    jammer_head = OptimizedHead(1)
 
     try:
-        backbone.load_state_dict(torch.load("models/backbone.pth", weights_only=True))
-        threat_head.load_state_dict(torch.load("models/threat_head.pth", weights_only=True))
-        type_head.load_state_dict(torch.load("models/type_head.pth", weights_only=True))
-        jammer_head.load_state_dict(torch.load("models/jammer_head.pth", weights_only=True))
+        backbone.load_state_dict(torch.load("models/final_production/backbone.pth", weights_only=True))
+        threat_head.load_state_dict(torch.load("models/final_production/threat_head.pth", weights_only=True))
+        type_head.load_state_dict(torch.load("models/final_production/type_head.pth", weights_only=True))
+        jammer_head.load_state_dict(torch.load("models/final_production/jammer_head.pth", weights_only=True))
     except Exception as e:
-        print(f"Error loading models. Have you run main.py? {e}")
+        print(f"Error loading models. Have you run train_final.py? {e}")
         exit(1)
 
     backbone.eval()
