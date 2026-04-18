@@ -3,7 +3,7 @@ import torch.nn as nn
 
 class UnifiedHead2d(nn.Module):
     """Elite-tier head for 2D classification."""
-    def __init__(self, in_features=192, hidden=64, out_classes=1):
+    def __init__(self, in_features=256, hidden=64, out_classes=1):
         super().__init__()
         self.fc = nn.Sequential(
             nn.Linear(in_features, hidden),
@@ -16,13 +16,13 @@ class UnifiedHead2d(nn.Module):
         return self.fc(x)
 
 class ThreatHead2d(UnifiedHead2d):
-    def __init__(self, in_features=192):
+    def __init__(self, in_features=256):
         super().__init__(in_features=in_features, out_classes=1)
 
 class TypeHead2d(UnifiedHead2d):
-    def __init__(self, in_features=192):
+    def __init__(self, in_features=256):
         super().__init__(in_features=in_features, out_classes=3)
 
 class JammerHead2d(UnifiedHead2d):
-    def __init__(self, in_features=192):
+    def __init__(self, in_features=256):
         super().__init__(in_features=in_features, out_classes=1)

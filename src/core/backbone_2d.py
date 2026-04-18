@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class ResBlock2d(nn.Module):
-    """Residual Block for 2D RF Representations."""
     def __init__(self, in_channels, out_channels, stride=1):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
@@ -25,7 +24,6 @@ class ResBlock2d(nn.Module):
         return F.relu(out)
 
 class GlobalContextBlock(nn.Module):
-    """Global Context to capture long-range spectral dependencies."""
     def __init__(self, in_channels):
         super().__init__()
         self.conv_mask = nn.Conv2d(in_channels, 1, kernel_size=1)
@@ -51,30 +49,22 @@ class SharedBackbone2d(nn.Module):
     """
     def __init__(self):
         super().__init__()
-        # Input: (2, 128, 128) - Mag & Phase
-        self.start = nn.Sequential(
-            nn.Conv2d(2, 48, kernel_size=7, stride=2, padding=3, bias=False),
-            nn.BatchNorm2d(48),
-            nn.ReLU()
-        )
-        
-        self.layer1 = ResBlock2d(48, 48, stride=1)
-        self.gc1 = GlobalContextBlock(48)
-        
-        self.layer2 = ResBlock2d(48, 96, stride=2)
-        self.gc2 = GlobalContextBlock(96)
-        
-        self.layer3 = ResBlock2d(96, 192, stride=2)
-        
+        self.start = nn.Conv2d(2, 64, kernel_size=3, stride=2, padding=1)
+        self.s1 = ResBlock2d(64, 64)
+        self.gc1 = GlobalContextBlock(64)
+        self.s2 = ResBlock2d(64, 128, stride=2)
+        self.gc2 = GlobalContextBlock(128)
+        self.s3 = ResBlock2d(128, 256, stride=2)
         self.gap = nn.AdaptiveAvgPool2d(1)
         
     def forward(self, x):
-        x = self.start(x)
-        x = self.gc1(self.layer1(x))
-        x = self.gc2(self.layer2(x))
-        x = self.layer3(x)
+        x = F.relu(self.start(x))
+        x = self.gc1(self.s1(x))
+        x = self.gc2(self.s2(x))
+        x = self.s3(x)
         x = self.gap(x)
-        return x.view(x.size(0), -1) # 192-dim features
+        return x.view(x.size(0), -1) # 256-dim features
 
-# Keep variants for benchmarking purposes if needed, but SharedBackbone2d is primary
-BackboneV1_Balanced = SharedBackbone2d # Alias for compatibility
+# Compatibility aliases
+BackboneV1_Balanced = SharedBackbone2d
+BackboneV2_Elite = SharedBackbone2d

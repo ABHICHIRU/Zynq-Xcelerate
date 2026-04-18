@@ -1,9 +1,9 @@
-# 2D Elite Pipeline Benchmark Report
+# Final Production 2D Benchmark Report
 
 | Task | Accuracy |
 |---|---|
-| Threat | 0.9767 |
-| Type | 0.9700 |
-| Jammer | 0.9667 |
+| Threat | 0.9600 |
+| Type | 0.9450 |
+| Jammer | 0.9533 |
 
-**Latency:** 1.2312 ms/sample
+**Latency:** 1.1754 ms/sample
