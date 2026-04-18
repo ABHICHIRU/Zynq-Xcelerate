@@ -91,10 +91,21 @@ pip install -r requirements.txt
 ### 2. End-to-End Production Loop
 To run the live production inference simulation (1D Stream -> 2D Bridge -> Inference -> RTL Voting):
 ```bash
-python production_pipeline_2d.py
+python main.py
 ```
 
-### 3. Verification Suite
+### 3. Tactical HUD Demo (Web Interface)
+A high-impact, military-style drag-and-drop interface for demonstration:
+```bash
+# 1. Start the backend
+python demo_app.py
+
+# 2. Access the HUD
+# Open browser at http://localhost:8000
+```
+*Note: Test samples are available in the `demo_samples/` directory.*
+
+### 4. Verification Suite
 Execute the ruthless mixed-signal stress test:
 ```bash
 python end_to_end_mixed_test.py
