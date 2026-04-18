@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 
-class ResBlock(nn.Module):
-    """Residual block to improve gradient flow and feature depth."""
+class ResBlockPro(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super().__init__()
         self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
@@ -26,28 +25,30 @@ class ResBlock(nn.Module):
 
 class SharedBackbone(nn.Module):
     """
-    SkyShield v3.5: Residual Feature Extractor.
-    Designed for Zynq-7020: Robust but hardware-efficient.
+    SkyShield v5.0 Pro (Optimized): ~280,000 Parameters.
+    Perfectly fits ~280KB BRAM at INT8, leaving 320KB for buffers/RTL.
     """
     def __init__(self):
         super().__init__()
-        # Initial projection: Large kernel for wide RF context
         self.start = nn.Sequential(
-            nn.Conv1d(2, 32, kernel_size=11, stride=2, padding=5, bias=False),
-            nn.BatchNorm1d(32),
+            nn.Conv1d(2, 48, kernel_size=11, stride=2, padding=5, bias=False),
+            nn.BatchNorm1d(48),
             nn.ReLU()
         )
         
-        # Residual layers
-        self.layer1 = ResBlock(32, 32, stride=2)
-        self.layer2 = ResBlock(32, 64, stride=2)
+        # Adjusted channel widths to hit 250k-300k range
+        self.stage1 = ResBlockPro(48, 48, stride=1)
+        self.stage2 = ResBlockPro(48, 96, stride=2)
+        self.stage3 = ResBlockPro(96, 96, stride=2)
+        self.stage4 = ResBlockPro(96, 192, stride=2)
         
-        # Global Pooling
         self.gap = nn.AdaptiveAvgPool1d(1)
         
     def forward(self, x):
         x = self.start(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
+        x = self.stage1(x)
+        x = self.stage2(x)
+        x = self.stage3(x)
+        x = self.stage4(x)
         x = self.gap(x)
-        return x.view(x.size(0), -1) # 64-dim output
+        return x.view(x.size(0), -1) # 192-dim
