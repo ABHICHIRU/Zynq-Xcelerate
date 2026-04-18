@@ -101,7 +101,7 @@ A high-impact, military-style drag-and-drop interface for demonstration:
 python demo_app.py
 
 # 2. Access the HUD
-# Open browser at http://localhost:8000
+# Open browser at http://localhost:8080
 ```
 *Note: Test samples are available in the `demo_samples/` directory.*
 
