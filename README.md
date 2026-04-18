@@ -1,4 +1,4 @@
-# High-Capacity RF Signal Classification for Zynq-7020 SoC FPGA
+# Zynq-Xcelerate: High-Capacity 2D RF Anomaly Detection for Zynq-7020 SoC
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
@@ -7,102 +7,79 @@
 
 ## Overview
 
-This repository implements a high-capacity RF anomaly detection and classification system specifically optimized for deployment on the Xilinx Zynq-7020 SoC FPGA. The system utilizes a Multi-Task Residual-Lite 1D-CNN architecture to classify complex baseband waveforms—including Direct Sequence Spread Spectrum (DSSS), pulsed telemetry, and chaotic phase noise—under non-ideal channel conditions.
+The Zynq-Xcelerate project provides a robust, production-grade pipeline for RF signal classification and anomaly detection, specifically engineered for the Xilinx Zynq-7020 SoC FPGA. Transitioning from 1D time-domain analysis to a high-fidelity 2D Time-Frequency Spectrogram representation, the system utilizes the **SkyShield v6.0 Echelon** architecture to isolate sophisticated threats—such as frequency-sweeping jammers and UAV telemetry—within complex electromagnetic environments.
 
-The design is optimized for Block RAM (BRAM) efficiency and deterministic sub-millisecond inference latency, making it suitable for real-time electronic defense and signal intelligence applications.
+The system is optimized for Block RAM (BRAM) efficiency and deterministic real-time inference, making it suitable for edge deployment in electronic defense and signal intelligence applications.
 
----
+## System Architecture: Echelon v6.0
 
-## System Architecture
-
-The model utilizes a **Shared Residual Backbone** topology to minimize DSP slice consumption. A single feature extraction pass generates high-dimensional embeddings that are interpreted by three specialized classification heads.
+The core engine utilizes a **Global-Context Hybrid 2D ResNet** topology. This design balances feature extraction capacity with the hardware constraints of the Zynq-7020.
 
 ### Technical Specifications
 | Parameter | Specification |
 | :--- | :--- |
-| **Total Parameters** | 340,709 |
-| **Input Tensor** | 2 x 512 (I/Q Time-Domain) |
-| **Quantization** | INT8 Hardware-Aware |
-| **BRAM Footprint** | ~341 KB (57% of Zynq-7020 BRAM) |
-| **Inference Latency** | 0.08ms per sample (CPU baseline) |
+| **Total Parameters** | ~280,000 |
+| **Input Tensor** | 2 x 128 x 128 (Magnitude & Phase) |
+| **Quantization** | INT8 Hardware-Aware (Simulated) |
+| **Memory Footprint** | ~1.8 MB (Float32) / ~450 KB (INT8) |
+| **Inference Latency** | 1.17ms per sample (including bridge) |
 
-### Topology Diagram
-```text
-[Input: 2 x 512 I/Q Tensor]
-          |
-[Wide Kernel Projection (k=11, 48 channels)]
-          |
-[Residual Stage 1: 48 filters, stride 1]
-          |
-[Residual Stage 2: 96 filters, stride 2]
-          |
-[Residual Stage 3: 96 filters, stride 2]
-          |
-[Residual Stage 4: 192 filters, stride 2]
-          |
-[Global Average Pooling] -> [192-dimensional Embedding]
-          |_______________________________________________________
-          |                       |                              |
-[Binary Detection]       [3-Class Identification]      [Entropy Analysis]
-(Threat vs Benign)       (WiFi / Drone / Jammer)       (Jamming Verification)
-```
+### Mathematical Bridge (1D to 2D)
+To interface with real-time 1D IQ streams, the system incorporates a Polyphase Channelizer/STFT bridge:
+*   **Windowing**: Hann windowing for minimized spectral leakage.
+*   **Resolution**: 128x128 grid for high temporal and spectral fidelity.
+*   **Normalization**: Robust scaling to [-1, 1] range for hardware compatibility.
 
----
+## Performance Benchmarks
 
-## Mathematical Foundations
+The system has been rigorously validated against a balanced real-time holdout set under variable SNR conditions (-18dB to +18dB).
 
-### 1. Waveform Synthesis Models
-*   **WiFi (IEEE 802.11b)**: Modeled via 11-chip Barker sequence spreading.
-*   **UAV Telemetry (DJI Pulse)**: Simulated as multitone carriers bounded by Gaussian-smoothed rectangular envelopes:
-    $$ x(t) = s(t) \cdot e^{j 2 \pi f_c t} \ast g(t) $$
-    where $g(t)$ is a Gaussian window used to simulate finite hardware slew rates.
-*   **Electronic Warfare (Wiener Jammer)**: Modeled as frequency-sweeping chirps modulated with Wiener-process phase noise (random walk) to simulate chaotic instability:
-    $$ \phi_{noise}(t) = \int_0^t \mathcal{N}(0, \sigma^2) d\tau $$
+| Metric | Accuracy | Status |
+| :--- | :--- | :--- |
+| **Threat Detection** | 96.00% | Verified |
+| **Type Classification** | 94.50% | Verified |
+| **Jammer Isolation** | 95.33% | Verified |
+| **False Alarm Rate** | < 11% | Validated |
 
-### 2. Signal Propagation & Channel Impairments
-Signals are subjected to a complex-baseband impairment model to ensure battlefield robustness:
-$$ y(t) = h(t) \cdot x(t) \cdot e^{j 2 \pi \Delta f t} + n(t) $$
-*   **Rayleigh Fading ($h(t)$)**: Multipath simulation via complex Gaussian distributions.
-*   **Carrier Frequency Offset ($\Delta f$)**: Hardware oscillator drift simulation.
-*   **AWGN ($n(t)$)**: Noise floor calibrated for data-driven signal-to-noise ratios (-20dB to 15dB).
+## Core Components
 
----
+*   `src/core/backbone_2d.py`: Global-Context Hybrid 2D ResNet implementation.
+*   `src/core/heads_2d.py`: Specialized heads for multi-task classification.
+*   `src/utils/channelizer.py`: Mathematical bridge for 1D-to-2D transformation.
+*   `production_pipeline_2d.py`: End-to-end inference engine with RTL voting logic.
+*   `benchmark_pipeline_2d.py`: Automated benchmarking and evaluation suite.
 
-## Hardware-Aware Training Protocol
+## Hardware-Aware Training
 
-To minimize the "reality gap" between high-precision training and fixed-point FPGA deployment, the forward pass incorporates an 8-bit discretization simulator:
+The pipeline incorporates an 8-bit discretization simulator to ensure that features learned during training are robust to quantization noise encountered during FPGA deployment:
 $$ x_{fixed} = \frac{\text{clip}(\text{round}(x \cdot 127), -128, 127)}{127.0} $$
-This forces the network to learn features that are invariant to quantization noise.
 
----
+## Usage
 
-## Usage & Deployment
-
-### 1. Installation
+### Installation
 ```bash
 git clone https://github.com/ABHICHIRU/Zynq-Xcelerate.git
 cd Zynq-Xcelerate
-git checkout production_1d
+git checkout feature/2d-elite-pipeline
 pip install -r requirements.txt
 ```
 
-### 2. Live Dashboard Simulation
-Run the real-time production dashboard to visualize waveforms and AI decisions:
+### Execution
+To run the end-to-end production inference simulation:
 ```bash
-python production_dashboard.py
+python production_pipeline_2d.py
 ```
 
-### 3. Technical Metrics & Logs
-Refer to the `viz_metrics/` directory for Confusion Matrices and `training_history.csv` for convergence data.
+To execute the benchmarking suite:
+```bash
+python benchmark_pipeline_2d.py
+```
 
----
+## Documentation
 
-## References
-
-1.  **O’Shea, T. J., & Hoydis, J. (2017).** "An Introduction to Deep Learning for the Physical Layer." *IEEE Transactions on Cognitive Communications and Networking*.
-2.  **Jacob, B., et al. (2018).** "Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference." *CVPR*.
-3.  **Caruana, R. (1997).** "Multitask Learning." *Machine Learning*.
-4.  **Tse, D., & Viswanath, P. (2005).** *Fundamentals of Wireless Communication*. Cambridge University Press.
+Comprehensive technical details and metadata are available in:
+*   `FINAL_PRODUCTION_REPORT_2D.md`: Full architectural and performance analysis.
+*   `BENCHMARK_REPORT_2D.md`: Detailed accuracy and latency logs.
 
 ---
 *Disclaimer: This project is intended for defensive research and academic study within the context of FPGA-accelerated signal intelligence.*
