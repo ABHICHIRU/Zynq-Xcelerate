@@ -1,40 +1,30 @@
 import os
 import torch
-from src.data_pipeline.generator import save_datasets
-from src.core.backbone import SharedBackbone
-from src.core.heads import ThreatHead, TypeHead, JammerHead
-from src.training.train_pipeline import train_joint_model
+import numpy as np
+from production_pipeline_2d import SkyShield2DProduction
 
 def main():
-    print("--- SkyShield v3.0: FPGA RF Defense System ---")
+    print("--- SkyShield v6.0 Echelon: Default 2D Production Pipeline ---")
     
-    # 1. Dataset Generation
-    if not os.path.exists("data/threat_dataset.npz"):
-        print("Generating datasets...")
-        save_datasets("data")
-    else:
-        print("Datasets already exist in data/")
+    # 1. Verification of Model Assets
+    model_path = "models/production_2d_elite"
+    if not os.path.exists(os.path.join(model_path, "backbone.pth")):
+        print(f"[ERROR] Production weights not found at {model_path}.")
+        print("[HINT] Run the benchmarking or training suite first to generate elite weights.")
+        return
 
-    # 2. Model Initialization
-    print("Initializing models...")
-    backbone = SharedBackbone()
-    threat_head = ThreatHead()
-    type_head = TypeHead()
-    jammer_head = JammerHead()
+    # 2. Initialize the Elite 2D Engine
+    print("Initializing Echelon v6.0 Balanced Engine...")
+    pipeline = SkyShield2DProduction(model_dir=model_path)
 
-    # 3. Joint Training (Multi-Task Learning for Max Efficiency and Accuracy)
-    print("\nTraining Heads Jointly (Gradient Shared)...")
-    train_joint_model(backbone, threat_head, type_head, jammer_head, num_epochs=15)
+    # 3. Simulate Production Stream
+    print("\nStarting Live Signal Ingestion Simulation...")
+    # Generate 10 dummy samples (1D Complex IQ) to demonstrate end-to-end flow
+    dummy_stream = [np.random.randn(512) + 1j * np.random.randn(512) for _ in range(10)]
+    
+    pipeline.process_stream(dummy_stream)
 
-    # 4. Save Weights
-    print("Saving models to models/ directory...")
-    os.makedirs("models", exist_ok=True)
-    torch.save(backbone.state_dict(), "models/backbone.pth")
-    torch.save(threat_head.state_dict(), "models/threat_head.pth")
-    torch.save(type_head.state_dict(), "models/type_head.pth")
-    torch.save(jammer_head.state_dict(), "models/jammer_head.pth")
-
-    print("SkyShield v3.0 Pipeline Complete.")
+    print("\nSkyShield 2D Pipeline Execution Complete.")
 
 if __name__ == "__main__":
     main()
