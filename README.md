@@ -1,50 +1,71 @@
-# SkyShield v4.2: FPGA-Accelerated RF Signal Intelligence (Baseline)
+# SkyShield: FPGA-Accelerated RF Signal Intelligence (Baseline)
 
-SkyShield v4.2 is a production-grade RF anomaly detection and classification system optimized for the Xilinx Zynq-7020 SoC FPGA. The system utilizes a multi-task 1D-CNN architecture to perform real-time classification of RF waveforms.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![Hardware: Zynq-7020](https://img.shields.io/badge/Hardware-Zynq--7020-orange.svg)](https://www.xilinx.com/products/silicon-devices/soc/zynq-7000.html)
 
-## 1. System Architecture
+## Overview
 
-The model implements a Shared Backbone architecture to minimize DSP slice utilization on the FPGA. 
+SkyShield v4.2 is a lightweight, production-grade RF anomaly detection system optimized for the **Xilinx Zynq-7020 SoC FPGA**. This baseline version utilizes an efficient Depthwise Separable 1D-CNN architecture to perform real-time classification of RF waveforms with minimal power and memory overhead.
 
-### 1.1 Model Topology
-```
+## System Architecture
+
+The model implements a Shared Backbone architecture to maximize hardware efficiency on edge devices.
+
+### Topology Diagram
+```text
 [Input: 2 x 512 I/Q Tensor]
           |
-[1D Convolution (k=7, 32 filters)]
+[1D Convolution (k=7, 32 channels)]
           |
-[Depthwise Separable Convolution (k=3, 64 filters)]
+[Depthwise Separable Convolution (k=3, 64 channels)]
           |
-[1D Convolution (k=3, 32 filters)]
+[1D Convolution (k=3, 32 channels)]
           |
-[Global Average Pooling] -> [32-dim Feature Vector]
-          |___________________________________________________
-          |                    |                              |
-[Threat Head (Binary)] [Type Head (3-Class)] [Jammer Head (Binary)]
+[Global Average Pooling] -> [32-dimensional Feature Vector]
+          |_______________________________________________________
+          |                       |                              |
+[Threat Head (Binary)]   [Type Head (3-Class)]         [Jammer Head (Binary)]
 ```
 
-### 1.2 Hardware Constraints
-- **Parameters**: 35,397
-- **Memory Footprint**: ~140 KB (Float32) / ~35 KB (INT8)
-- **BRAM Utilization**: Minimal (< 10% of Zynq-7020 on-chip memory).
+### Hardware Profile
+- **Total Parameters**: 35,397
+- **Quantized Footprint**: ~35 KB (INT8 precision)
 - **Latency**: < 0.04ms per sample.
 
-## 2. RF Dataset Synthesis & Mathematical Foundation
+## Mathematical Foundations
 
-Datasets are generated using data-driven physics calibrated against real-world I/Q patterns.
+Datasets are generated using standard RF engineering principles to simulate real-world propagation environments.
 
-### 2.1 Signal Generation Models
-- **WiFi (802.11b DSSS)**: Modeled using 11-chip Barker Code spreading.
-- **DJI Drone (Pulsed RF)**: Complex multitone carrier with Gaussian-windowed envelopes.
-- **EW Jammer (Chaotic Noise)**: Sweeping chirp carrier with Wiener-process phase noise.
+### 1. Waveform Synthesis
+*   **WiFi (802.11b DSSS)**: 11-chip Barker Code spreading.
+*   **DJI Drone (Pulsed RF)**: Complex multitone carrier with Gaussian envelopes.
+*   **Jammer (Chaotic Phase Noise)**: FM chirp carrier with Wiener process instability.
 
-### 2.2 Mathematical Impairments
-The following RF impairments are injected mathematically to ensure robustness:
-1. **Rayleigh Fading**: Multipath simulation using complex Gaussian distributions.
-2. **Carrier Frequency Offset (CFO)**: Phase rotation defined as $\exp(j 2 \pi \Delta f t)$.
-3. **AWGN**: Noise floor calibrated for data-driven signal-to-noise ratios.
+### 2. Signal Propagation Model
+Signals are subjected to a complex-baseband channel model:
+$$ y(t) = h(t) \cdot x(t) \cdot e^{j 2 \pi \Delta f t} + n(t) $$
+Where $h(t)$ represents Rayleigh fading, $\Delta f$ represents Carrier Frequency Offset, and $n(t)$ represents AWGN.
 
-## 3. Operational Pipeline
-1. **Ingestion**: 512-sample I/Q windowing.
-2. **Preprocessing**: Normalized for INT8 hardware range.
-3. **Inference**: Multi-task classification via Shared Backbone.
-4. **Decision**: RTL-deterministic voting logic for system action.
+## Usage
+
+### 1. Environment Setup
+```bash
+git clone https://github.com/ABHICHIRU/Zynq-Xcelerate.git
+pip install torch numpy pandas matplotlib scikit-learn scipy
+```
+
+### 2. Running Inference
+```bash
+python verify_inference.py
+```
+
+## References
+
+1.  O’Shea, T. J., & Hoydis, J. (2017). "An Introduction to Deep Learning for the Physical Layer." *IEEE TCCN*.
+2.  Caruana, R. (1997). "Multitask Learning." *Machine Learning*.
+3.  Tse, D., & Viswanath, P. (2005). *Fundamentals of Wireless Communication*.
+
+---
+*For the high-capacity version (~341k parameters), please see the `production_1d` branch.*
