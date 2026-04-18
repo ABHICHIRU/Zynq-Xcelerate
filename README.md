@@ -9,7 +9,9 @@
 
 This repository provides a lightweight, production-grade RF anomaly detection system optimized for the Xilinx Zynq-7020 SoC FPGA. This baseline implementation utilize an efficient Depthwise Separable 1D-CNN architecture to perform real-time classification of RF waveforms with minimal power and memory overhead.
 
-The design is optimized for ultra-low latency edge inference, fitting comfortably within the most constrained hardware resource limits.
+The design is optimized for ultra-low latency edge inference, fitting comfortably within the most constrained hardware resource limits. 
+
+This repository also includes a **high-fidelity Signal Intelligence Dashboard** for real-time visualization of detection engine metrics, threat classification, and model explainability.
 
 ## System Architecture
 
@@ -59,10 +61,23 @@ git clone https://github.com/ABHICHIRU/Zynq-Xcelerate.git
 pip install torch numpy pandas matplotlib scikit-learn scipy
 ```
 
-### 2. Running Inference
+### 2. Running Inference (Headless)
 ```bash
 python verify_inference.py
 ```
+
+### 3. Interactive Signal Analytics Dashboard
+The repository features a professional-grade Streamlit dashboard for visualizing testbench results and threat classifications.
+
+```bash
+streamlit run dashboard.py
+```
+
+**Key Dashboard Features:**
+*   **Signal Monitoring:** Real-time I/Q component and energy envelope visualization.
+*   **Detection Engine:** Performance metrics by scenario and energy vs. confidence density.
+*   **Threat Classification:** Top-1 vs Top-2 confidence tracking and threat distribution.
+*   **Explainability:** Feature correlation heatmaps to justify detection logic.
 
 ## References
 
