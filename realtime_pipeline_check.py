@@ -19,35 +19,39 @@ def load_production_pipeline():
     backbone.eval(); threat_h.eval(); type_h.eval(); jammer_h.eval()
     return backbone, threat_h, type_h, jammer_h
 
-def run_realtime_stream_check(n_iterations=15):
-    print("--- SKYSHIELD v3.0: LIVE STREAM PIPELINE AUDIT ---")
+def run_stress_test(n_iterations=20):
+    print("--- SKYSHIELD v3.0: STRESS TEST AUDIT (Anti-Overfit Proof) ---")
+    print("Conditions: Harsh Noise (-15dB to -5dB) + Random Time Shifts")
+    print("-" * 75)
+    
     models = load_production_pipeline()
     backbone, threat_h, type_h, jammer_h = models
     
     success_count = 0
     
-    print(f"{'ITER':<5} | {'INTENDED CLASS':<15} | {'SYSTEM DECISION':<20} | {'RESULT'}")
-    print("-" * 60)
+    print(f"{'ITER':<5} | {'CLASS':<12} | {'SNR':<7} | {'DECISION':<18} | {'RESULT'}")
+    print("-" * 75)
     
     for i in range(n_iterations):
-        # 1. Simulate Live Signal Intercept (Random Physics)
         target_id = np.random.randint(0, 3)
-        snr = np.random.uniform(0, 15) # Testing in clear-ish conditions
+        snr = np.random.uniform(-15, -5) # HARSH NOISE Stress Test
         
         if target_id == 0:
             iq_sample = generate_wifi_dsss(snr)
+            expected_action = 0
             label = "WiFi"
-            expected_action = 0 # STANDBY
         elif target_id == 1:
             iq_sample = generate_dji_pulse(snr)
+            expected_action = 1
             label = "DJI Drone"
-            expected_action = 1 # ALERT_THREAT
         else:
             iq_sample = generate_jammer(snr)
+            expected_action = 2
             label = "Jammer"
-            expected_action = 2 # ALERT_JAMMING
             
-        # 2. Real-Time Inference (Single Sample Batching)
+        # Add random roll (Time invariance check)
+        iq_sample = np.roll(iq_sample, np.random.randint(-100, 100), axis=-1)
+            
         x = torch.tensor(iq_sample, dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():
             feat = backbone(x)
@@ -55,25 +59,22 @@ def run_realtime_stream_check(n_iterations=15):
             p_type = torch.argmax(type_h(feat), dim=1).item()
             p_jammer = (torch.sigmoid(jammer_h(feat).squeeze()) > 0.5).item()
             
-        # 3. Deterministic Decision Logic
-        action_code, status = rtl_voting_logic(p_threat, p_type, p_jammer)
+        action_code, _ = rtl_voting_logic(p_threat, p_type, p_jammer)
         
-        # 4. Verification
         decision_map = {0: "STANDBY", 1: "ALERT_DRONE", 2: "ALERT_JAMMING"}
         result = "PASS" if action_code == expected_action else "FAIL"
         if result == "PASS": success_count += 1
         
-        print(f"{i+1:<5} | {label:<15} | {decision_map[action_code]:<20} | {result}")
-        time.sleep(0.1) # Simulate hardware processing delay
+        print(f"{i+1:<5} | {label:<12} | {snr:<7.1f} | {decision_map[action_code]:<18} | {result}")
 
     final_score = (success_count / n_iterations) * 100
-    print("-" * 60)
-    print(f"PIPELINE AUDIT COMPLETE. Accuracy: {final_score:.1f}%")
+    print("-" * 75)
+    print(f"STRESS TEST COMPLETE. Robustness Score: {final_score:.1f}%")
     
-    if final_score >= 90:
-        print("[STATUS: SYSTEM PRODUCTION READY]")
+    if final_score >= 80:
+        print("[CONCLUSION: MODEL IS ROBUST & GENERALIZED]")
     else:
-        print("[STATUS: PIPELINE DRIFT DETECTED - RE-CALIBRATE]")
+        print("[CONCLUSION: OVERFITTING STILL PRESENT OR MODEL TOO WEAK FOR NOISE]")
 
 if __name__ == "__main__":
-    run_realtime_stream_check()
+    run_stress_test()
