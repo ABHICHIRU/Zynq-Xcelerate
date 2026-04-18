@@ -38,7 +38,7 @@ class ResBlock2d(nn.Module):
 class SharedBackbone2d(nn.Module):
     """
     SkyShield v4.0 2D: Depthwise-Separable CNN for Zynq-7020.
-    Optimized for Tensor Shape (2, 64, 64).
+    Optimized for Tensor Shape (2, 128, 128).
     """
     def __init__(self):
         super().__init__()
@@ -46,12 +46,13 @@ class SharedBackbone2d(nn.Module):
             nn.Conv2d(2, 32, kernel_size=3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU()
-        ) # 32x32
+        ) # 64x64
         
         self.stage1 = ResBlock2d(32, 32, stride=1)
-        self.stage2 = ResBlock2d(32, 64, stride=2) # 16x16
-        self.stage3 = ResBlock2d(64, 128, stride=2) # 8x8
-        self.stage4 = ResBlock2d(128, 256, stride=2) # 4x4
+        self.stage2 = ResBlock2d(32, 64, stride=2) # 32x32
+        self.stage3 = ResBlock2d(64, 128, stride=2) # 16x16
+        self.stage4 = ResBlock2d(128, 256, stride=2) # 8x8
+        self.stage5 = ResBlock2d(256, 256, stride=2) # 4x4
         
         self.gap = nn.AdaptiveAvgPool2d(1)
         
@@ -61,5 +62,6 @@ class SharedBackbone2d(nn.Module):
         x = self.stage2(x)
         x = self.stage3(x)
         x = self.stage4(x)
+        x = self.stage5(x)
         x = self.gap(x)
         return x.view(x.size(0), -1) # 256-dim

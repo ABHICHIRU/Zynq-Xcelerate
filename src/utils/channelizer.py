@@ -55,30 +55,32 @@ class PolyphaseChannelizer:
 
 def apply_channelizer_2d(iq_complex):
     """
-    Bridge function to use PolyphaseChannelizer and return (2, 64, 64) tensor.
+    Mathematical Bridge: 1D to 2D via STFT.
+    Increased resolution to 128x128 for finer feature extraction.
     """
-    # Using 64 channels
-    pfb = PolyphaseChannelizer(n_channels=64)
-    # We need to pad iq_complex to get 64 frames
-    # 64 * 64 = 4096. Original is 512.
-    # To get 64 frames with 64 channels, we need 4096 samples.
-    # We can zero-pad or repeat.
-    padded = np.pad(iq_complex, (0, 4096 - len(iq_complex)), mode='constant')
+    f, t_stft, Zxx = scipy.signal.stft(iq_complex, nperseg=64, noverlap=60, return_onesided=False, window='hann')
     
-    channels = pfb.process(padded) # (64, 64)
+    from scipy.interpolate import interp1d
+    x = np.linspace(0, 1, Zxx.shape[1])
+    x_new = np.linspace(0, 1, 128)
+    f_interp = interp1d(x, Zxx, axis=1, kind='linear', fill_value="extrapolate")
+    Zxx_128 = f_interp(x_new)
     
-    # Extract Channels (Magnitude and Phase)
-    mag = 10 * np.log10(np.abs(channels)**2 + 1e-9)
-    phase = np.angle(channels)
+    # Frequency interpolation to 128
+    y = np.linspace(0, 1, Zxx_128.shape[0])
+    y_new = np.linspace(0, 1, 128)
+    f_interp_freq = interp1d(y, Zxx_128, axis=0, kind='linear', fill_value="extrapolate")
+    Zxx_128 = f_interp_freq(y_new)
     
-    # Normalization to [-1, 1]
-    def min_max_norm(x):
-        xmin, xmax = x.min(), x.max()
-        if xmax == xmin: return x * 0
-        return 2 * (x - xmin) / (xmax - xmin) - 1.0
+    mag = 10 * np.log10(np.abs(Zxx_128)**2 + 1e-10)
+    phase = np.angle(Zxx_128)
+    
+    def robust_norm(x, x_min, x_max):
+        x = np.clip(x, x_min, x_max)
+        return 2 * (x - x_min) / (x_max - x_min) - 1.0
 
-    mag_norm = min_max_norm(mag)
-    phase_norm = min_max_norm(phase)
+    mag_norm = robust_norm(mag, -80, 20)
+    phase_norm = robust_norm(phase, -np.pi, np.pi)
     
     return np.stack([mag_norm, phase_norm], axis=0).astype(np.float32)
 

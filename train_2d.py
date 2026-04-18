@@ -7,7 +7,7 @@ import os
 from src.core.backbone_2d import SharedBackbone2d
 from src.core.heads_2d import ThreatHead2d, TypeHead2d, JammerHead2d
 
-def train_model(model_name, backbone, head, X, Y, epochs=10, batch_size=32, is_multiclass=False):
+def train_model(model_name, backbone, head, X, Y, epochs=10, batch_size=16, is_multiclass=False):
     print(f"--- Training {model_name} ---")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     backbone.to(device)
