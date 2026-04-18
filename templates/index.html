@@ -58,13 +58,13 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            position: relative;
+            padding: 20px;
+            overflow-y: auto;
         }
 
         #drop-zone {
-            width: 80%;
-            height: 60%;
+            width: 90%;
+            min-height: 150px;
             border: 2px dashed var(--main-green);
             display: flex;
             align-items: center;
@@ -73,103 +73,95 @@
             cursor: pointer;
             transition: 0.3s;
             background: rgba(0, 255, 65, 0.05);
+            margin-bottom: 20px;
         }
 
-        #drop-zone.dragover {
-            background: rgba(0, 255, 65, 0.2);
-            border-style: solid;
+        #results-container {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            padding: 10px;
         }
 
-        .side-panel {
-            border: var(--border-style);
-            padding: 15px;
+        .tactical-card {
+            border: 1px solid var(--main-green);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 10px;
         }
 
-        .visual-frame {
-            width: 100%;
-            aspect-ratio: 1/1;
-            border: 1px solid var(--main-green);
+        .card-header {
+            border-bottom: 1px solid var(--main-green);
+            padding-bottom: 5px;
+            font-size: 14px;
+            color: var(--amber);
+        }
+
+        .card-body {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #000;
+            gap: 10px;
         }
 
-        #spectrogram-img {
-            max-width: 100%;
-            display: none;
-        }
-
-        .status-box {
+        .card-visual {
+            width: 80px;
+            height: 80px;
             border: 1px solid var(--main-green);
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.5);
         }
 
-        .label { font-weight: bold; color: var(--amber); }
-        .value { margin-left: 10px; }
+        .card-stats {
+            flex: 1;
+            font-size: 12px;
+        }
 
-        .alert-active {
+        .alert-flash {
             color: var(--danger);
-            animation: blink 1s infinite;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 5px;
         }
 
-        @keyframes blink {
-            0% { opacity: 1; }
-            50% { opacity: 0.2; }
-            100% { opacity: 1; }
-        }
-
-        #loading { display: none; margin-top: 10px; }
+        #loading { display: none; margin-bottom: 10px; color: var(--amber); }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            SKYSHIELD v6.0 ECHELON // TACTICAL HUD
+            SKYSHIELD v6.0 ECHELON // TACTICAL MULTI-SCAN HUD
         </div>
 
         <div class="main-display">
             <div id="drop-zone">
                 <div>
-                    [ RADAR SCAN ZONE ]<br><br>
-                    DROP RF SIGNAL DATA (.NPY)<br>
-                    OR CLICK TO UPLOAD
+                    [ RADAR BATCH SCAN ZONE ]<br><br>
+                    DROP MULTIPLE SIGNAL FILES (.NPY)<br>
+                    OR CLICK TO UPLOAD BATCH
                 </div>
             </div>
-            <div id="loading">ANALYZING SIGNAL SPECTRUM...</div>
+            <div id="loading">DECRYPTING SIGNAL BATCH...</div>
+            <div id="results-container"></div>
         </div>
 
         <div class="side-panel">
-            <div class="visual-frame">
-                <img id="spectrogram-img" src="" alt="Spectrogram">
-                <div id="no-signal">NO SIGNAL DETECTED</div>
-            </div>
-
             <div class="status-box">
-                <div><span class="label">CLASSIFICATION:</span> <span class="value" id="res-type">---</span></div>
-                <div><span class="label">THREAT STATUS:</span> <span class="value" id="res-threat">---</span></div>
-                <div><span class="label">JAMMING INDX:</span> <span class="value" id="res-jammer">---</span></div>
-                <div style="margin-top: 10px; border-top: 1px solid var(--main-green); padding-top: 5px;">
-                    <span class="label">HARDWARE ACTION:</span><br>
-                    <span class="value" id="res-action" style="font-size: 14px;">STANDBY...</span>
-                </div>
+                <div class="label">SYSTEM STATUS:</div>
+                <div class="value">ACTIVE SCANNING</div>
+                <div style="margin-top:10px;" class="label">BATCH QUEUE:</div>
+                <div id="queue-count" class="value">0 SIGNALS</div>
             </div>
 
-            <div id="alert-banner" style="text-align: center; font-size: 20px;"></div>
+            <div id="global-alert" style="text-align: center; font-size: 18px; margin-top: 20px;"></div>
         </div>
     </div>
 
     <script>
         const dropZone = document.getElementById('drop-zone');
-        const spectrogramImg = document.getElementById('spectrogram-img');
-        const noSignal = document.getElementById('no-signal');
-        const alertBanner = document.getElementById('alert-banner');
+        const resultsContainer = document.getElementById('results-container');
+        const queueCount = document.getElementById('queue-count');
+        const globalAlert = document.getElementById('global-alert');
         
-        // Drag and Drop Logic
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('dragover');
@@ -182,64 +174,76 @@
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) handleUpload(file);
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleBatchUpload(files);
         });
 
         dropZone.addEventListener('click', () => {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.npy';
-            input.onchange = (e) => handleUpload(e.target.files[0]);
+            input.multiple = true;
+            input.onchange = (e) => handleBatchUpload(e.target.files);
             input.click();
         });
 
-        async function handleUpload(file) {
+        async function handleBatchUpload(files) {
             document.getElementById('loading').style.display = 'block';
-            const formData = new FormData();
-            formData.append('file', file);
+            resultsContainer.innerHTML = ''; // Clear previous results
+            queueCount.innerText = `${files.length} SIGNALS`;
+            let threatFound = false;
 
-            try {
-                const response = await fetch('/analyze', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                updateHUD(data);
-            } catch (err) {
-                console.error("ANALYSIS FAILED", err);
-            } finally {
-                document.getElementById('loading').style.display = 'none';
+            for (let file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/analyze', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    createTacticalCard(file.name, data);
+                    if (data.prediction.is_threat) threatFound = true;
+                } catch (err) {
+                    console.error("ANALYSIS FAILED FOR", file.name, err);
+                }
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            
+            if (threatFound) {
+                globalAlert.innerText = "!!! THREAT ENCOUNTERED IN BATCH !!!";
+                globalAlert.className = 'alert-active';
+            } else {
+                globalAlert.innerText = "BATCH SCAN CLEAR";
+                globalAlert.className = '';
             }
         }
 
-        function updateHUD(data) {
+        function createTacticalCard(filename, data) {
             const pred = data.prediction;
+            const card = document.createElement('div');
+            card.className = 'tactical-card';
             
-            // Update Text
-            document.getElementById('res-type').innerText = pred.type;
-            document.getElementById('res-threat').innerText = pred.is_threat ? "POSITIVE" : "NEGATIVE";
-            document.getElementById('res-threat').style.color = pred.is_threat ? "var(--danger)" : "var(--main-green)";
+            const threatStyle = pred.is_threat ? 'color: var(--danger);' : 'color: var(--main-green);';
             
-            document.getElementById('res-jammer').innerText = pred.jammer ? "ACTIVE" : "NONE";
-            document.getElementById('res-jammer').style.color = pred.jammer ? "var(--danger)" : "var(--main-green)";
-            
-            document.getElementById('res-action').innerText = pred.action;
-
-            // Update Visual
-            spectrogramImg.src = `data:image/png;base64,${data.visual}`;
-            spectrogramImg.style.display = 'block';
-            noSignal.style.display = 'none';
-
-            // Alert Banner
-            if (pred.is_threat) {
-                alertBanner.innerText = "!!! THREAT DETECTED !!!";
-                alertBanner.classList.add('alert-active');
-            } else {
-                alertBanner.innerText = "SCAN CLEAR";
-                alertBanner.classList.remove('alert-active');
-            }
+            card.innerHTML = `
+                <div class="card-header">${filename}</div>
+                <div class="card-body">
+                    <img class="card-visual" src="data:image/png;base64,${data.visual}">
+                    <div class="card-stats">
+                        <div>TYPE: ${pred.type}</div>
+                        <div style="${threatStyle}">STATUS: ${pred.is_threat ? 'THREAT' : 'CLEAR'}</div>
+                        <div>ACTION: ${pred.code}</div>
+                    </div>
+                </div>
+                ${pred.is_threat ? `<div class="alert-flash">ALERT: ${pred.action}</div>` : ''}
+            `;
+            resultsContainer.appendChild(card);
         }
     </script>
+</body>
+</html>
 </body>
 </html>
