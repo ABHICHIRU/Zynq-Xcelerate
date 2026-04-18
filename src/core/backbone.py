@@ -1,31 +1,53 @@
 import torch
 import torch.nn as nn
 
+class ResBlock(nn.Module):
+    """Residual block to improve gradient flow and feature depth."""
+    def __init__(self, in_channels, out_channels, stride=1):
+        super().__init__()
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(out_channels)
+        self.relu = nn.ReLU()
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm1d(out_channels)
+        
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm1d(out_channels)
+            )
+
+    def forward(self, x):
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        return self.relu(out)
+
 class SharedBackbone(nn.Module):
     """
-    Shared 1D-CNN Feature Extractor for Zynq-7020 FPGA acceleration.
-    Constraints: INT8 Quantizable, No FFT, Minimal FPU usage.
+    SkyShield v3.5: Residual Feature Extractor.
+    Designed for Zynq-7020: Robust but hardware-efficient.
     """
     def __init__(self):
-        super(SharedBackbone, self).__init__()
-        # Input: (Batch, 2, 512)
-        # Conv1D(2 -> 16)
-        self.conv1 = nn.Conv1d(in_channels=2, out_channels=16, kernel_size=7, stride=2, padding=3)
-        self.relu1 = nn.ReLU()
+        super().__init__()
+        # Initial projection: Large kernel for wide RF context
+        self.start = nn.Sequential(
+            nn.Conv1d(2, 32, kernel_size=11, stride=2, padding=5, bias=False),
+            nn.BatchNorm1d(32),
+            nn.ReLU()
+        )
         
-        # DepthwiseConv1D (Separable convolution for efficiency)
-        self.depthwise = nn.Conv1d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding=1, groups=16)
+        # Residual layers
+        self.layer1 = ResBlock(32, 32, stride=2)
+        self.layer2 = ResBlock(32, 64, stride=2)
         
-        # Conv1D(16 -> 32)
-        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2, padding=1)
-        self.relu2 = nn.ReLU()
-        
-        # Global Average Pooling (Standard feature reduction)
+        # Global Pooling
         self.gap = nn.AdaptiveAvgPool1d(1)
         
     def forward(self, x):
-        x = self.relu1(self.conv1(x))
-        x = self.depthwise(x)
-        x = self.relu2(self.conv2(x))
+        x = self.start(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
         x = self.gap(x)
-        return x.view(x.size(0), -1) # Flattened 32-dim feature vector
+        return x.view(x.size(0), -1) # 64-dim output

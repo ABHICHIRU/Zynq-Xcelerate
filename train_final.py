@@ -5,52 +5,23 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 
-class OptimizedBackbone(nn.Module):
-    def __init__(self):
-        super().__init__()
-        # Adding BatchNormalization to stabilize and regularize training
-        self.conv1 = nn.Conv1d(2, 16, kernel_size=11, stride=2, padding=5)
-        self.bn1 = nn.BatchNorm1d(16)
-        self.relu1 = nn.ReLU()
-        self.conv2 = nn.Conv1d(16, 32, kernel_size=3, stride=2, padding=1)
-        self.bn2 = nn.BatchNorm1d(32)
-        self.relu2 = nn.ReLU()
-        self.gap = nn.AdaptiveAvgPool1d(1)
-        
-    def forward(self, x):
-        x = self.relu1(self.bn1(self.conv1(x)))
-        x = self.relu2(self.bn2(self.conv2(x)))
-        x = self.gap(x)
-        return x.view(x.size(0), -1)
-
-class OptimizedHead(nn.Module):
-    def __init__(self, out_classes, dropout=0.5): # Increased Dropout to 0.5
-        super().__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(32, 16),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(16, out_classes)
-        )
-    def forward(self, x):
-        return self.fc(x)
+# Import the NEW SkyShield v3.5 Architecture
+from src.core.backbone import SharedBackbone
+from src.core.heads import ThreatHead, TypeHead, JammerHead
 
 def apply_augmentation(x):
     """
-    On-the-fly Data Augmentation to prevent overfitting:
-    1. Random Time Roll (Translation invariance)
-    2. Random Phase Rotation
+    On-the-fly Data Augmentation for Robustness:
+    - Time Roll (Phase Invariance)
+    - Add jitter (Noise robustness)
     """
-    # 1. Random Time Roll (Shift the sequence)
-    shift = np.random.randint(-50, 50)
+    shift = np.random.randint(-100, 100)
     x = torch.roll(x, shifts=shift, dims=-1)
-    
-    # 2. Add very small jitter
-    jitter = torch.randn_like(x) * 0.01
+    jitter = torch.randn_like(x) * 0.02 # Increased jitter for robustness
     return x + jitter
 
-def train_robust_model():
-    print("--- SkyShield v3.0: Robust Production Training (Anti-Overfit) ---")
+def train_robust_production_model():
+    print("--- SkyShield v3.5: Residual Production Training ---")
     
     # Load Datasets
     t_data = np.load("data/threat_dataset.npz")
@@ -63,51 +34,49 @@ def train_robust_model():
     Y_j = torch.tensor(j_data['Y'], dtype=torch.float32)
     
     dataset = TensorDataset(X, Y_t, Y_y, Y_j)
-    loader = DataLoader(dataset, batch_size=32, shuffle=True)
+    loader = DataLoader(dataset, batch_size=64, shuffle=True)
     
-    backbone = OptimizedBackbone()
-    threat_head = OptimizedHead(1, dropout=0.5)
-    type_head = OptimizedHead(3, dropout=0.5)
-    jammer_head = OptimizedHead(1, dropout=0.5)
+    backbone = SharedBackbone()
+    threat_h = ThreatHead(in_features=64)
+    type_h = TypeHead(in_features=64)
+    jammer_h = JammerHead(in_features=64)
     
-    # Adding Weight Decay (L2) to prevent large weights
+    # Use Weight Decay for Regularization
     optimizer = optim.Adam(
-        list(backbone.parameters()) + list(threat_head.parameters()) + 
-        list(type_head.parameters()) + list(jammer_head.parameters()), 
+        list(backbone.parameters()) + list(threat_h.parameters()) + 
+        list(type_h.parameters()) + list(jammer_h.parameters()), 
         lr=0.001,
-        weight_decay=1e-4 
+        weight_decay=1e-4
     )
     
     bce = nn.BCEWithLogitsLoss()
     ce = nn.CrossEntropyLoss()
     
-    epochs = 40
+    epochs = 60 # More epochs for complex model to converge
     for epoch in range(epochs):
-        backbone.train(); threat_head.train(); type_head.train(); jammer_head.train()
+        backbone.train(); threat_h.train(); type_h.train(); jammer_h.train()
         epoch_loss = 0
         for bx, byt, byy, byj in loader:
-            # Apply Augmentation
             bx = apply_augmentation(bx)
-            
             optimizer.zero_grad()
             feat = backbone(bx)
-            loss = bce(threat_head(feat).squeeze(), byt) + \
-                   ce(type_head(feat), byy) + \
-                   bce(jammer_head(feat).squeeze(), byj)
+            loss = bce(threat_h(feat).squeeze(), byt) + \
+                   ce(type_h(feat), byy) + \
+                   bce(jammer_h(feat).squeeze(), byj)
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
             
         if (epoch + 1) % 10 == 0:
-            print(f"Epoch {epoch+1}/{epochs} | Loss: {epoch_loss/len(loader):.4f}")
+            print(f"Epoch {epoch+1:02d}/{epochs} | Loss: {epoch_loss/len(loader):.4f}")
 
-    # Save to 'final_production'
+    # Save Final Production Weights
     os.makedirs("models/final_production", exist_ok=True)
     torch.save(backbone.state_dict(), "models/final_production/backbone.pth")
-    torch.save(threat_head.state_dict(), "models/final_production/threat_head.pth")
-    torch.save(type_head.state_dict(), "models/final_production/type_head.pth")
-    torch.save(jammer_head.state_dict(), "models/final_production/jammer_head.pth")
-    print("\nRobust Training Finished. Overfitting reduced via Augmentation + L2 + Dropout.")
+    torch.save(threat_h.state_dict(), "models/final_production/threat_head.pth")
+    torch.save(type_h.state_dict(), "models/final_production/type_head.pth")
+    torch.save(jammer_h.state_dict(), "models/final_production/jammer_head.pth")
+    print("\nRobust SkyShield v3.5 Training Finished.")
 
 if __name__ == "__main__":
-    train_robust_model()
+    train_robust_production_model()

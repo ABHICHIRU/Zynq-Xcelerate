@@ -1,38 +1,28 @@
 import torch
 import torch.nn as nn
 
-class ThreatHead(nn.Module):
-    """Head A: Binary Classification (Benign/Threat)"""
-    def __init__(self, input_dim=32):
-        super(ThreatHead, self).__init__()
+class UnifiedHead(nn.Module):
+    """Deep head for robust classification."""
+    def __init__(self, in_features=64, hidden=32, out_classes=1):
+        super().__init__()
         self.fc = nn.Sequential(
-            nn.Linear(input_dim, 16),
+            nn.Linear(in_features, hidden),
             nn.ReLU(),
-            nn.Linear(16, 1) # Output raw logit
+            nn.Dropout(0.4),
+            nn.Linear(hidden, out_classes)
         )
     def forward(self, x):
         return self.fc(x)
 
-class TypeHead(nn.Module):
-    """Head B: 3-Class Classification (WiFi/DJI/Jammer)"""
-    def __init__(self, input_dim=32):
-        super(TypeHead, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, 16),
-            nn.ReLU(),
-            nn.Linear(16, 3) # WiFi=0, DJI=1, Jammer=2
-        )
-    def forward(self, x):
-        return self.fc(x)
+# Keeping old names for pipeline compatibility
+class ThreatHead(UnifiedHead):
+    def __init__(self, in_features=64):
+        super().__init__(in_features=in_features, out_classes=1)
 
-class JammerHead(nn.Module):
-    """Head C: Binary Classification (Clear/Jammer)"""
-    def __init__(self, input_dim=32):
-        super(JammerHead, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, 16),
-            nn.ReLU(),
-            nn.Linear(16, 1) # Output raw logit
-        )
-    def forward(self, x):
-        return self.fc(x)
+class TypeHead(UnifiedHead):
+    def __init__(self, in_features=64):
+        super().__init__(in_features=in_features, out_classes=3)
+
+class JammerHead(UnifiedHead):
+    def __init__(self, in_features=64):
+        super().__init__(in_features=in_features, out_classes=1)
