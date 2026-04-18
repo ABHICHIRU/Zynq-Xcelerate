@@ -1,4 +1,4 @@
-# SkyShield: FPGA-Accelerated RF Signal Intelligence
+# SkyShield: FPGA-Accelerated RF Signal Intelligence (Pro Tier)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
@@ -7,7 +7,7 @@
 
 ## Overview
 
-SkyShield v5.0 Pro is an open-source, production-grade Radio Frequency (RF) anomaly detection and classification system. Designed specifically for edge deployment on the **Xilinx Zynq-7020 SoC FPGA**, the system leverages a highly optimized Multi-Task Residual-Lite 1D-CNN. It is capable of real-time classification of benign communications (e.g., IEEE 802.11b DSSS), unauthorized UAV intrusions (e.g., DJI pulsed telemetry), and Electronic Warfare (EW) jamming attacks.
+SkyShield Pro is an open-source, production-grade Radio Frequency (RF) anomaly detection and classification system. Designed specifically for edge deployment on the **Xilinx Zynq-7020 SoC FPGA**, the system leverages a highly optimized Multi-Task Residual-Lite 1D-CNN. It is capable of real-time classification of benign communications (e.g., IEEE 802.11b DSSS), unauthorized UAV intrusions (e.g., DJI pulsed telemetry), and Electronic Warfare (EW) jamming attacks.
 
 The architecture prioritizes minimal Block RAM (BRAM) utilization and sub-millisecond inference latency while maintaining high robustness against complex battlefield impairments such as Rayleigh fading and Carrier Frequency Offset (CFO).
 
