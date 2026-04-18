@@ -1,88 +1,108 @@
-# High-Capacity RF Signal Intelligence for Zynq-7020 SoC FPGA
+# High-Capacity RF Signal Classification for Zynq-7020 SoC FPGA
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
-[![Hardware: Xilinx Zynq-7020](https://img.shields.io/badge/Hardware-Zynq--7020-orange.svg)](https://www.xilinx.com/products/silicon-devices/soc/zynq-7000.html)
+[![Hardware: Zynq-7020](https://img.shields.io/badge/Hardware-Zynq--7020-orange.svg)](https://www.xilinx.com/products/silicon-devices/soc/zynq-7000.html)
 
 ## Overview
 
-This repository provides a high-capacity RF anomaly detection and classification system optimized for edge deployment on the Xilinx Zynq-7020 SoC FPGA. The implementation utilizes a Multi-Task Residual-Lite 1D-CNN architecture to classify complex waveforms (DSSS, pulsed telemetry, and chaotic phase noise) in real-time.
+This repository implements a high-capacity RF anomaly detection and classification system specifically optimized for deployment on the Xilinx Zynq-7020 SoC FPGA. The system utilizes a Multi-Task Residual-Lite 1D-CNN architecture to classify complex baseband waveforms—including Direct Sequence Spread Spectrum (DSSS), pulsed telemetry, and chaotic phase noise—under non-ideal channel conditions.
 
-The system is engineered to satisfy sub-millisecond inference requirements while maintaining robustness against Rayleigh fading, Carrier Frequency Offset (CFO), and high-noise environments (-20dB SNR).
+The design is optimized for Block RAM (BRAM) efficiency and deterministic sub-millisecond inference latency, making it suitable for real-time electronic defense and signal intelligence applications.
+
+---
 
 ## System Architecture
 
-The model implements a Shared Residual Backbone with specialized classification heads to optimize hardware resource utilization (DSP slices and BRAM).
+The model utilizes a **Shared Residual Backbone** topology to minimize DSP slice consumption. A single feature extraction pass generates high-dimensional embeddings that are interpreted by three specialized classification heads.
 
 ### Technical Specifications
-- **Parameter Count**: 340,709
-- **Memory Footprint**: ~341 KB (at INT8 precision)
-- **BRAM Utilization**: ~57% of Zynq-7020 on-chip BRAM (~600 KB capacity).
-- **Latency**: 0.08ms per 512-sample window (CPU baseline).
+| Parameter | Specification |
+| :--- | :--- |
+| **Total Parameters** | 340,709 |
+| **Input Tensor** | 2 x 512 (I/Q Time-Domain) |
+| **Quantization** | INT8 Hardware-Aware |
+| **BRAM Footprint** | ~341 KB (57% of Zynq-7020 BRAM) |
+| **Inference Latency** | 0.08ms per sample (CPU baseline) |
 
-### Network Topology
+### Topology Diagram
 ```text
 [Input: 2 x 512 I/Q Tensor]
           |
 [Wide Kernel Projection (k=11, 48 channels)]
           |
-[Residual Stage 1: 48 channels, stride 1]
+[Residual Stage 1: 48 filters, stride 1]
           |
-[Residual Stage 2: 96 channels, stride 2]
+[Residual Stage 2: 96 filters, stride 2]
           |
-[Residual Stage 3: 96 channels, stride 2]
+[Residual Stage 3: 96 filters, stride 2]
           |
-[Residual Stage 4: 192 channels, stride 2]
+[Residual Stage 4: 192 filters, stride 2]
           |
-[Global Average Pooling] -> [192-dimensional Feature Vector]
+[Global Average Pooling] -> [192-dimensional Embedding]
           |_______________________________________________________
           |                       |                              |
-[Threat Classifier]      [Type Classifier]           [Entropy Detector]
-(Binary Logic)           (WiFi / Drone / Jammer)     (Phase Noise Analysis)
+[Binary Detection]       [3-Class Identification]      [Entropy Analysis]
+(Threat vs Benign)       (WiFi / Drone / Jammer)       (Jamming Verification)
 ```
 
-## Mathematical Foundations & Dataset Synthesis
+---
 
-The dataset is generated via a data-driven synthetic engine calibrated against real-world I/Q patterns.
+## Mathematical Foundations
 
-### 1. Signal Models
-*   **WiFi 802.11b (DSSS)**: Modeled using the 11-chip Barker sequence $c = [+1, -1, +1, +1, -1, +1, +1, +1, -1, -1, -1]$.
-*   **UAV Telemetry (DJI Pulse)**: Simulated as a complex multitone carrier bounded by a Gaussian-smoothed rectangular envelope to simulate finite hardware slew rates.
-*   **EW Jamming (Chaotic Noise)**: Modeled as an FM chirp injected with a Wiener process (random walk) to simulate phase instability:
+### 1. Waveform Synthesis Models
+*   **WiFi (IEEE 802.11b)**: Modeled via 11-chip Barker sequence spreading.
+*   **UAV Telemetry (DJI Pulse)**: Simulated as multitone carriers bounded by Gaussian-smoothed rectangular envelopes:
+    $$ x(t) = s(t) \cdot e^{j 2 \pi f_c t} \ast g(t) $$
+    where $g(t)$ is a Gaussian window used to simulate finite hardware slew rates.
+*   **Electronic Warfare (Wiener Jammer)**: Modeled as frequency-sweeping chirps modulated with Wiener-process phase noise (random walk) to simulate chaotic instability:
     $$ \phi_{noise}(t) = \int_0^t \mathcal{N}(0, \sigma^2) d\tau $$
 
-### 2. Channel Propagation Model
-To ensure generalization, signals pass through a complex-baseband impairment model:
+### 2. Signal Propagation & Channel Impairments
+Signals are subjected to a complex-baseband impairment model to ensure battlefield robustness:
 $$ y(t) = h(t) \cdot x(t) \cdot e^{j 2 \pi \Delta f t} + n(t) $$
 *   **Rayleigh Fading ($h(t)$)**: Multipath simulation via complex Gaussian distributions.
-*   **Carrier Frequency Offset ($\Delta f$)**: Local oscillator drift simulation.
-*   **AWGN ($n(t)$)**: Calibrated down to -20dB SNR.
+*   **Carrier Frequency Offset ($\Delta f$)**: Hardware oscillator drift simulation.
+*   **AWGN ($n(t)$)**: Noise floor calibrated for data-driven signal-to-noise ratios (-20dB to 15dB).
 
-## Training & Quantization Protocol
+---
 
-The pipeline utilizes a **Hardware-Aware Training** protocol. To minimize the quantization gap, the forward pass incorporates an 8-bit discretization simulator:
+## Hardware-Aware Training Protocol
+
+To minimize the "reality gap" between high-precision training and fixed-point FPGA deployment, the forward pass incorporates an 8-bit discretization simulator:
 $$ x_{fixed} = \frac{\text{clip}(\text{round}(x \cdot 127), -128, 127)}{127.0} $$
+This forces the network to learn features that are invariant to quantization noise.
 
-## Quick Start
+---
+
+## Usage & Deployment
 
 ### 1. Installation
 ```bash
 git clone https://github.com/ABHICHIRU/Zynq-Xcelerate.git
 cd Zynq-Xcelerate
 git checkout production_1d
-pip install torch numpy pandas matplotlib scikit-learn scipy
+pip install -r requirements.txt
 ```
 
-### 2. Production Dashboard
-Run the real-time simulation and decision engine:
+### 2. Live Dashboard Simulation
+Run the real-time production dashboard to visualize waveforms and AI decisions:
 ```bash
 python production_dashboard.py
 ```
 
+### 3. Technical Metrics & Logs
+Refer to the `viz_metrics/` directory for Confusion Matrices and `training_history.csv` for convergence data.
+
+---
+
 ## References
 
 1.  **O’Shea, T. J., & Hoydis, J. (2017).** "An Introduction to Deep Learning for the Physical Layer." *IEEE Transactions on Cognitive Communications and Networking*.
-2.  **Caruana, R. (1997).** "Multitask Learning." *Machine Learning*, 28, 41-75.
-3.  **Jacob, B., et al. (2018).** "Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference." *CVPR*.
+2.  **Jacob, B., et al. (2018).** "Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference." *CVPR*.
+3.  **Caruana, R. (1997).** "Multitask Learning." *Machine Learning*.
 4.  **Tse, D., & Viswanath, P. (2005).** *Fundamentals of Wireless Communication*. Cambridge University Press.
+
+---
+*Disclaimer: This project is intended for defensive research and academic study within the context of FPGA-accelerated signal intelligence.*
