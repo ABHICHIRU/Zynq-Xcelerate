@@ -1,4 +1,4 @@
-# SkyShield: FPGA-Accelerated RF Signal Intelligence (Baseline)
+# Lightweight RF Signal Classification for Zynq-7020 SoC FPGA
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
@@ -7,7 +7,9 @@
 
 ## Overview
 
-SkyShield Baseline is a lightweight, production-grade RF anomaly detection system optimized for the **Xilinx Zynq-7020 SoC FPGA**. This version utilizes an efficient Depthwise Separable 1D-CNN architecture to perform real-time classification of RF waveforms with minimal power and memory overhead.
+This repository provides a lightweight, production-grade RF anomaly detection system optimized for the Xilinx Zynq-7020 SoC FPGA. This baseline implementation utilize an efficient Depthwise Separable 1D-CNN architecture to perform real-time classification of RF waveforms with minimal power and memory overhead.
+
+The design is optimized for ultra-low latency edge inference, fitting comfortably within the most constrained hardware resource limits.
 
 ## System Architecture
 
@@ -32,7 +34,8 @@ The model implements a Shared Backbone architecture to maximize hardware efficie
 ### Hardware Profile
 - **Total Parameters**: 35,397
 - **Quantized Footprint**: ~35 KB (INT8 precision)
-- **Latency**: < 0.04ms per sample.
+- **Memory Allocation**: Minimal (< 10% of Zynq-7020 on-chip BRAM).
+- **Latency**: < 0.04ms per 512-sample window.
 
 ## Mathematical Foundations
 
@@ -65,7 +68,8 @@ python verify_inference.py
 
 1.  O’Shea, T. J., & Hoydis, J. (2017). "An Introduction to Deep Learning for the Physical Layer." *IEEE TCCN*.
 2.  Caruana, R. (1997). "Multitask Learning." *Machine Learning*.
-3.  Tse, D., & Viswanath, P. (2005). *Fundamentals of Wireless Communication*.
+3.  Jacob, B., et al. (2018). "Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference." *CVPR*.
+4.  Tse, D., & Viswanath, P. (2005). *Fundamentals of Wireless Communication*.
 
 ---
 *For the high-capacity version (~341k parameters), please see the `production_1d` branch.*
