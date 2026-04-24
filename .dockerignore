@@ -1,0 +1,28 @@
+# Exclude datasets (they should be in Cloud Storage or a separate volume)
+data/**/*.npz
+data/**/*.npy
+data/production/
+data/production_2d/
+data/realtime/
+data/realtime_2d/
+
+# Exclude large models that are not the production elite ones
+# models/v1_baseline/
+# models/v2_wider/
+# models/v3_lightweight/
+# models/2d_bench/
+
+# Exclude local configs and logs
+*.log
+*.csv
+.git
+.gitignore
+__pycache__/
+*.pyc
+.ipynb_checkpoints
+.env
+
+# Exclude visual metrics
+viz_metrics/
+*.png
+*.jpg
