@@ -24,7 +24,7 @@ COPY . .
 EXPOSE 8080
 
 # Define environment variable
-ENV MODEL_DIR=models/production_2d_elite
+ENV MODEL_DIR=models
 ENV PORT=8080
 
 # Run uvicorn when the container launches
