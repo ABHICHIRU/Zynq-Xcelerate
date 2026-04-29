@@ -112,10 +112,7 @@ xsim (simulate) → CSV results
 Vivado synthesis
     ↓
 Place & Route
-    ↓
-Bitstream generation (.bit)
-    ↓
-JTAG programming → Zynq-7020
+    
 ```
 
 ## Target Users
