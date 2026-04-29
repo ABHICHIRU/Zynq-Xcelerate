@@ -96,7 +96,7 @@ See `hardware/rtl/RTL_MODULES.md` for complete module documentation.
 - `hardware/docs/ARCHITECTURE.md` - Detailed design
 - `hardware/docs/AXI_PROTOCOL.md` - Interface specifications
 - `hardware/docs/PIN_MAPPING.md` - Pin assignments
-- `hardware/docs/PATENT_TECHNICAL_REPORT.md` - Patent-grade specs
+
 
 ## Build Pipeline
 
@@ -122,7 +122,6 @@ JTAG programming → Zynq-7020
 
 - FPGA hardware engineers
 - Embedded systems developers
-- RF signal processing specialists
 - Drone defense system integrators
 
 ## License
