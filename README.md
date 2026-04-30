@@ -1,4 +1,4 @@
-# Zynq-Xcelerate Hardware Implementation Branch
+# Zynq-Xcelerate Hardware Implementation Branch(UNDER VERIFICATION >>>>>>>>>>>>)
 
 Production-grade FPGA RTL implementation for the Zynq-7000 SoC platform.
 
