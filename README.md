@@ -7,25 +7,42 @@
 
 ## Overview
 
-This repository provides a lightweight, production-grade RF anomaly detection system optimized for the Xilinx Zynq-7020 SoC FPGA. This baseline implementation utilize an efficient Depthwise Separable 1D-CNN architecture to perform real-time classification of RF waveforms with minimal power and memory overhead.
+This repository provides a lightweight, production-grade RF anomaly detection system optimized for the Xilinx Zynq-7020 SoC FPGA. This baseline implementation utilizes an efficient **1D Residual Network (ResNet)** backbone, matching the implementation in `src/core/backbone.py`.
 
-The design is optimized for ultra-low latency edge inference, fitting comfortably within the most constrained hardware resource limits. 
+The design is optimized for ultra-low latency edge inference, fitting comfortably within constrained hardware resource limits.
 
 This repository also includes a **high-fidelity Signal Intelligence Dashboard** for real-time visualization of detection engine metrics, threat classification, and model explainability.
 
+## Productionization Roadmap
+
+To ensure this repository is deployable and robust for real-world RF edge inference on Zynq, please address these items:
+
+1. **Code-Documentation Alignment**
+    - [ ] Architecture: Confirm README and code both describe a 1D Residual Network (ResNet).
+    - [ ] Branch description: Clearly acknowledge this is the quantized, compressed INT8 version.
+2. **RF DSP Front-End (Pre-processing)**
+    - [ ] Add signal triggering (energy/autocorrelation) to feed correctly-aligned 512-sample I/Q windows.
+    - [ ] Implement Carrier Frequency Offset (CFO) correction (e.g., Costas loop) to handle radio drift.
+3. **Real SDR Data Integration**
+    - [ ] Capture and inject real-world SDR (e.g., HackRF, PlutoSDR) I/Q data into your training pipelines.
+    - [ ] Update dataloaders to create a hybrid dataset of synthetic and real recordings.
+4. **FPGA Compilation Pipeline**
+    - [ ] Pass the trained INT8 PyTorch model through Xilinx Vitis AI or FINN toolchain.
+    - [ ] Write a C++/PYNQ wrapper to move SDR data into the FPGA and retrieve classifications.
+
+See inline code comments and project issues for technical guidance.
+
 ## System Architecture
 
-The model implements a Shared Backbone architecture to maximize hardware efficiency on edge devices.
+The model implements a Shared Backbone architecture (1D ResNet) to maximize hardware efficiency on edge devices.
 
 ### Topology Diagram
 ```text
 [Input: 2 x 512 I/Q Tensor]
           |
-[1D Convolution (k=7, 32 channels)]
+[1D Convolution + Residual Block (k=7, 32 channels)]
           |
-[Depthwise Separable Convolution (k=3, 64 channels)]
-          |
-[1D Convolution (k=3, 32 channels)]
+[1D Residual Blocks (k=3, 64/32 channels)]
           |
 [Global Average Pooling] -> [32-dimensional Feature Vector]
           |_______________________________________________________
@@ -87,4 +104,4 @@ streamlit run dashboard.py
 4.  Tse, D., & Viswanath, P. (2005). *Fundamentals of Wireless Communication*.
 
 ---
-*For the high-capacity version (~341k parameters), please see the `production_1d` branch.*
+*This branch contains the highly-compressed, quantized (~35KB INT8, ~35,397 parameters) model for deployment. If you are looking for the high-capacity (~341k parameters) reference implementation, please see the `main` or `preproduction` branch.*
