@@ -1,6 +1,10 @@
 import os
+import sys
 import torch
 import numpy as np
+
+# Add scripts/pipeline to path for module resolution
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'scripts', 'pipeline'))
 from production_pipeline_2d import SkyShield2DProduction
 
 def main():

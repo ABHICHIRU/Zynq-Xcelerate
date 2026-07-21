@@ -5,9 +5,13 @@ from fastapi.templating import Jinja2Templates
 import numpy as np
 import torch
 import os
+import sys
 import io
 import base64
 import matplotlib.pyplot as plt
+
+# Add scripts/pipeline to path for module resolution
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'scripts', 'pipeline'))
 from production_pipeline_2d import SkyShield2DProduction
 from src.utils.channelizer import apply_channelizer_2d
 

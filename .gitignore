@@ -156,10 +156,4 @@ models/**/*.h5
 *.h5
 training_history.csv
 DETAILED_METRICS.log
-logged_data.csv
-BENCHMARK_REPORT.md
-BENCHMARK_REPORT_2D.md
-AUTOML_REPORT.md
-RUTHLESS_2D_VERIFICATION_REPORT.md
-viz_metrics/**/*.png
-viz_metrics/**/*.jpg
+logs/logged_data.csv
